@@ -413,17 +413,6 @@ MIT License - See [LICENSE](LICENSE) file
 
 ---
 
-## 👥 Contributors
-
-**Academic Project - Group Assignment**
-
-- [Your Name] - Data Collection, Feature Engineering
-- [Team Member 2] - Model Development, Training
-- [Team Member 3] - Evaluation, Visualization
-- [Team Member 4] - Deployment, Documentation
-
----
-
 ## 📚 References
 
 ### Libraries & Frameworks
@@ -434,29 +423,7 @@ MIT License - See [LICENSE](LICENSE) file
 - **Streamlit:** Chen et al. (2019) - Web application framework
 
 ### Methodology
-- **CRISP-DM:** Chapman et al. (2000) - Data mining process model
-
-### Research Papers
-- "Random Forests" - Breiman (2001)
-- "LSTM Networks" - Hochreiter & Schmidhuber (1997)
-- "Sentiment Analysis in Finance" - Loughran & McDonald (2011)
-
----
-
-## 📧 Contact
-
-For questions or collaboration:
-- **Email:** [your-email@example.com]
-- **GitHub:** [your-github-username]
-
----
-
-## ⭐ Acknowledgments
-
-- **Course:** Data Mining / Machine Learning
-- **Instructor:** [Professor Name]
-- **Institution:** San Jose State University
-- **Semester:** Fall 2024
+- **CRISP-DM:**
 
 ---
 
