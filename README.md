@@ -116,25 +116,7 @@ Despite these challenges, achieved excellent results with Random Forest!
 
 - Fix news collection (more sources, paid APIs)
 - Add more stocks
-- Implement LSTM models (fix TensorFlow)
-- Cloud deployment
 - Automated retraining
-
-## Academic Compliance
-
-- Original code (no plagiarism)
-- Proper citations for libraries
-- No data leakage
-- Reproducible results
-- Complete documentation
-
-## License
-
-MIT License
-
-## Contact
-
-[Add your contact info]
 
 ---
 
