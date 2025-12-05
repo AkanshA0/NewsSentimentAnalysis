@@ -27,6 +27,15 @@ for dir_path in [RAW_DATA_DIR, PROCESSED_DATA_DIR, FEATURES_DIR,
 # STOCK CONFIGURATION
 # ============================================================================
 STOCK_SYMBOLS = ["AAPL", "GOOGL", "TSLA", "NVDA"]
+
+# Stock display names
+STOCK_NAMES = {
+    'AAPL': 'Apple Inc',
+    'GOOGL': 'Alphabet Inc (Google)',
+    'TSLA': 'Tesla Inc',
+    'NVDA': 'NVIDIA Corp'
+}
+
 DATA_PERIOD = "2y"  # 2 years of historical stock data
 NEWS_PERIOD = "1y"  # 1 year of news data (more practical for scraping)
 DATA_INTERVAL = "1d"  # Daily data

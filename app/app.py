@@ -72,6 +72,19 @@ def load_data():
         return None
 
 
+@st.cache_data
+def load_sentiment_timeline():
+    """Load static sentiment timeline data for visualization."""
+    try:
+        sentiment_file = FEATURES_DIR / "sentiment_timeline.csv"
+        if sentiment_file.exists():
+            df = pd.read_csv(sentiment_file, parse_dates=['Date'])
+            return df
+        return None
+    except Exception as e:
+        return None
+
+
 @st.cache_resource
 def load_model():
     """Load trained model if available."""
@@ -92,8 +105,18 @@ def load_model():
 
 
 def get_realtime_sentiment(symbol):
-    """Get real-time news sentiment for today."""
+    """Get real-time news sentiment AND latest stock price for today."""
     try:
+        # Fetch latest stock price
+        import yfinance as yf
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period='1d')
+        
+        latest_price = None
+        if not hist.empty:
+            latest_price = hist['Close'].iloc[-1]
+        
+        # Fetch news
         collector = NewsCollector(symbols=[symbol])
         news_df = collector.collect_all_news(max_articles_per_source=5)
         
@@ -104,10 +127,11 @@ def get_realtime_sentiment(symbol):
             avg_sentiment = news_with_sentiment['sentiment_score'].mean()
             news_count = len(news_with_sentiment)
             
-            return avg_sentiment, news_count, news_with_sentiment
-        return 0.0, 0, pd.DataFrame()
-    except:
-        return 0.0, 0, pd.DataFrame()
+            return avg_sentiment, news_count, news_with_sentiment, latest_price
+        return 0.0, 0, pd.DataFrame(), latest_price
+    except Exception as e:
+        st.error(f"Error fetching data: {str(e)}")
+        return 0.0, 0, pd.DataFrame(), None
 
 
 def plot_price_with_prediction(df, symbol, model, scaler, feature_cols):
@@ -220,11 +244,17 @@ def main():
         # Real-time sentiment
         st.subheader("📰 Today's News Sentiment")
         if st.button("🔍 Analyze Latest News"):
-            with st.spinner("Fetching latest news..."):
-                sentiment, count, news_df = get_realtime_sentiment(selected_stock)
+            with st.spinner("Fetching latest news and stock price..."):
+                sentiment, count, news_df, latest_price = get_realtime_sentiment(selected_stock)
                 
                 if count > 0:
                     st.success(f"✅ Analyzed {count} articles")
+                    
+                    # Show latest price if available
+                    if latest_price:
+                        st.metric("📈 Latest Stock Price", f"${latest_price:.2f}", 
+                                 "Live from yfinance", delta_color="off")
+                    
                     st.metric("Today's Sentiment", f"{sentiment:.3f}",
                              delta="Bullish" if sentiment > 0 else "Bearish")
                     
@@ -236,15 +266,6 @@ def main():
                     st.warning("No recent news found")
         
         st.markdown("---")
-        
-        # Status
-        st.subheader("🎯 Model Status")
-        if model_trained:
-            st.success("✅ Model Trained & Ready")
-            st.info("Making predictions...")
-        else:
-            st.warning("⏳ Model Not Trained")
-            st.info("Run: `python train_model.py`")
     
     # Load data
     df = load_data()
@@ -277,11 +298,13 @@ def main():
                 <p style='font-size: 1.5rem;'>
                     {'📈 UP' if predicted_change > 0 else '📉 DOWN'} {abs(predicted_change):.2f}%
                 </p>
-                <p style='opacity: 0.8;'>Current Price: ${current_price:.2f}</p>
+                <p style='opacity: 0.8;'>Based on last historical price: ${current_price:.2f}</p>
             </div>
             """, unsafe_allow_html=True)
         except Exception as e:
             st.error(f"Prediction error: {str(e)}")
+    else:
+        st.info("📊 Prediction models are being prepared. Historical data and analysis available below.")
     
     # Metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -291,19 +314,26 @@ def main():
                        stock_data['Close'].iloc[-2]) * 100 if len(stock_data) > 1 else 0
     
     with col1:
-        st.metric("💰 Current Price", f"${current_price:.2f}", f"{price_change_pct:+.2f}%")
+        st.metric("💰 Last Historical Price", f"${current_price:.2f}", f"{price_change_pct:+.2f}%",
+                 help="Last closing price from training dataset")
     
     with col2:
         avg_sentiment = stock_data['daily_sentiment'].mean() if 'daily_sentiment' in stock_data.columns else 0
-        st.metric("📊 Avg Sentiment", f"{avg_sentiment:.3f}",
-                 "Positive" if avg_sentiment > 0 else "Negative")
+        # Fix -0.000 display issue
+        if abs(avg_sentiment) < 0.001:
+            avg_sentiment = 0.0
+        sentiment_label = "Positive" if avg_sentiment > 0 else ("Negative" if avg_sentiment < 0 else "Neutral")
+        st.metric("📊 Avg Sentiment", f"{avg_sentiment:.3f}", sentiment_label,
+                 help="Average sentiment from historical news data")
     
     with col3:
-        st.metric("📅 Data Points", f"{len(stock_data)}", "days")
+        st.metric("📅 Data Points", f"{len(stock_data)}", "days",
+                 help="Number of trading days in dataset")
     
     with col4:
         news_count = stock_data['news_count'].sum() if 'news_count' in stock_data.columns else 0
-        st.metric("📰 News Analyzed", f"{int(news_count)}", "articles")
+        st.metric("📰 News Analyzed", f"{int(news_count)}", "articles",
+                 help="Total news articles in training data")
     
     # Charts
     st.markdown("---")

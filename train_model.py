@@ -32,12 +32,41 @@ def prepare_data_for_baseline(df):
     """Prepare data for baseline models (no sequences)."""
     logger.info("Preparing data for baseline models...")
     
-    # Select features
-    feature_cols = [col for col in df.columns if col not in 
-                   ['Date', 'Symbol', 'Target_Price', 'Target_Return', 'Target_Direction']]
+    # CRITICAL: Only use PAST data to predict future prices
+    # Technical indicators are calculated from same-day OHLCV, so they leak information!
+    exclude_cols = [
+        'Date', 'Symbol', 
+        'Target_Price', 'Target_Return', 'Target_Direction',
+        # Same-day price data
+        'Close', 'Open', 'High', 'Low', 'Volume',
+        # Same-day sentiment
+        'daily_sentiment', 'sentiment_std', 'news_count',
+        'positive_news_ratio', 'negative_news_ratio',
+        # Same-day technical indicators (calculated from today's OHLCV)
+        'Returns', 'RSI', 'MACD', 'MACD_Signal', 'MACD_Hist',
+        'BB_Upper', 'BB_Middle', 'BB_Lower', 'BB_Width',
+        'ATR', 'OBV', 'Stoch_K', 'Stoch_D',
+        'SMA_10', 'SMA_20', 'SMA_50', 'SMA_200',
+        'EMA_10', 'EMA_12', 'EMA_20', 'EMA_26', 'EMA_50',
+        'Volume_SMA_20',
+    ]
+    
+    # Exclude Close lag and rolling features
+    close_lag_cols = [col for col in df.columns if 'Close_lag' in col or 'Close_rolling' in col]
+    exclude_cols.extend(close_lag_cols)
+    
+    feature_cols = [col for col in df.columns if col not in exclude_cols]
     
     X = df[feature_cols].values
-    y = df['Close'].values
+    y = df['Close'].values  # Predict Close price
+    
+    logger.info(f"✅ Features: {len(feature_cols)} columns (ONLY PAST DATA)")
+    logger.info(f"❌ Excluded: {len(exclude_cols)} columns (same-day + target)")
+    logger.info(f"📊 Sample features: {feature_cols[:20]}")
+    
+    if len(feature_cols) == 0:
+        logger.error("ERROR: No features remaining after exclusions!")
+        raise ValueError("No valid features for training")
     
     # Scale features
     scaler = MinMaxScaler()
@@ -50,13 +79,46 @@ def prepare_data_for_lstm(df, sequence_length=30):
     """Prepare sequential data for LSTM."""
     logger.info("Preparing sequential data for LSTM...")
     
-    feature_cols = [col for col in df.columns if col not in 
-                   ['Date', 'Symbol', 'Target_Price', 'Target_Return', 'Target_Direction']]
+    # CRITICAL: Only use PAST data
+    exclude_cols = [
+        'Date', 'Symbol',
+        'Target_Price', 'Target_Return', 'Target_Direction',
+        # Same-day price data
+        'Close', 'Open', 'High', 'Low', 'Volume',
+        # Same-day sentiment
+        'daily_sentiment', 'sentiment_std', 'news_count',
+        'positive_news_ratio', 'negative_news_ratio',
+        # Same-day technical indicators
+        'Returns', 'RSI', 'MACD', 'MACD_Signal', 'MACD_Hist',
+        'BB_Upper', 'BB_Middle', 'BB_Lower', 'BB_Width',
+        'ATR', 'OBV', 'Stoch_K', 'Stoch_D',
+        'SMA_10', 'SMA_20', 'SMA_50', 'SMA_200',
+        'EMA_10', 'EMA_12', 'EMA_20', 'EMA_26', 'EMA_50',
+        'Volume_SMA_20',
+    ]
+    
+    # Exclude Close lag and rolling features
+    close_lag_cols = [col for col in df.columns if 'Close_lag' in col or 'Close_rolling' in col]
+    exclude_cols.extend(close_lag_cols)
+    
+    feature_cols = [col for col in df.columns if col not in exclude_cols]
+    
+    logger.info(f"✅ LSTM Features: {len(feature_cols)} columns (ONLY PAST DATA)")
+    logger.info(f"❌ Excluded: {len(exclude_cols)} columns")
+    logger.info(f"📊 Sample features: {feature_cols[:20]}")
+    
+    if len(feature_cols) == 0:
+        logger.error("ERROR: No features remaining!")
+        raise ValueError("No valid features for LSTM")
     
     all_X, all_y = [], []
     
     for symbol in df['Symbol'].unique():
-        symbol_data = df[df['Symbol'] == symbol].copy()
+        symbol_data = df[df['Symbol'] == symbol].copy().sort_values('Date')
+        
+        if len(symbol_data) < sequence_length + 1:
+            logger.warning(f"Skipping {symbol}: insufficient data")
+            continue
         
         # Scale features
         scaler = MinMaxScaler()
@@ -110,22 +172,29 @@ def train_ensemble():
     logger.info("="*80)
     
     X_baseline, y_baseline, scaler_baseline, feature_cols = prepare_data_for_baseline(df)
-    X_train_b, X_test_b, y_train_b, y_test_b = train_test_split(
-        X_baseline, y_baseline, test_size=0.2, random_state=42
+    
+    # Split into train, validation, and test
+    X_train_b, X_temp_b, y_train_b, y_temp_b = train_test_split(
+        X_baseline, y_baseline, test_size=0.3, random_state=42
+    )
+    X_val_b, X_test_b, y_val_b, y_test_b = train_test_split(
+        X_temp_b, y_temp_b, test_size=0.5, random_state=42
     )
     
     baseline = BaselineModels()
     
     # Linear Regression
     logger.info("\nTraining Linear Regression...")
-    lr_model = baseline.train_linear_regression(X_train_b, y_train_b)
-    lr_pred = baseline.predict(lr_model, X_test_b)
+    lr_result = baseline.train_linear_regression(X_train_b, y_train_b, X_val_b, y_val_b)
+    lr_model = lr_result['model']
+    lr_pred = lr_model.predict(X_test_b)
     lr_metrics = evaluator.evaluate_model(y_test_b, lr_pred, "Linear Regression")
     
     # Random Forest
     logger.info("\nTraining Random Forest...")
-    rf_model = baseline.train_random_forest(X_train_b, y_train_b)
-    rf_pred = baseline.predict(rf_model, X_test_b)
+    rf_result = baseline.train_random_forest(X_train_b, y_train_b, X_val_b, y_val_b)
+    rf_model = rf_result['model']
+    rf_pred = rf_model.predict(X_test_b)
     rf_metrics = evaluator.evaluate_model(y_test_b, rf_pred, "Random Forest")
     
     # Save baseline models

@@ -123,17 +123,35 @@ class EnsembleModel:
                 else:
                     pred = model  # Already predictions
                 
+                # Ensure pred is 1D array
+                if isinstance(pred, np.ndarray):
+                    pred = pred.flatten()
+                
                 individual_preds[name] = pred
                 
             except Exception as e:
                 logger.warning(f"Prediction failed for {name}: {str(e)}")
-                individual_preds[name] = np.zeros(len(X))
+                individual_preds[name] = np.zeros(len(X) if hasattr(X, '__len__') else 1)
+        
+        # Determine output length from first successful prediction
+        output_length = None
+        for pred in individual_preds.values():
+            if len(pred) > 0:
+                output_length = len(pred)
+                break
+        
+        if output_length is None:
+            return np.array([])
         
         # Weighted average
-        ensemble_pred = np.zeros(len(X))
+        ensemble_pred = np.zeros(output_length)
         for name, pred in individual_preds.items():
             weight = self.weights.get(name, 0.0)
-            ensemble_pred += weight * pred
+            # Ensure pred matches output length
+            if len(pred) == output_length:
+                ensemble_pred += weight * pred
+            else:
+                logger.warning(f"Skipping {name}: prediction length mismatch")
         
         self.predictions = individual_preds
         

@@ -8,15 +8,24 @@ import numpy as np
 from pathlib import Path
 import logging
 from typing import List, Dict, Optional, Tuple
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 from textblob import TextBlob
-import torch
 import warnings
 warnings.filterwarnings('ignore')
 
-# Setup logging
+# Setup logging FIRST
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Try to import PyTorch/FinBERT, but don't fail if DLL error
+FINBERT_AVAILABLE = False
+try:
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+    import torch
+    FINBERT_AVAILABLE = True
+    logger.info("✅ FinBERT available")
+except (OSError, ImportError) as e:
+    logger.warning(f"⚠️  FinBERT not available (PyTorch DLL error): {str(e)[:100]}")
+    logger.info("📊 Using TextBlob-only sentiment analysis")
 
 
 class FeatureEngineer:
@@ -38,7 +47,7 @@ class FeatureEngineer:
         Args:
             use_finbert: Whether to use FinBERT (requires more memory)
         """
-        self.use_finbert = use_finbert
+        self.use_finbert = use_finbert and FINBERT_AVAILABLE
         
         # Initialize sentiment analyzers
         logger.info("Initializing sentiment analyzers...")
@@ -58,6 +67,8 @@ class FeatureEngineer:
                 logger.warning(f"Could not load FinBERT: {str(e)}")
                 logger.warning("Falling back to TextBlob only")
                 self.use_finbert = False
+        else:
+            logger.info("📊 Using TextBlob-only (FinBERT disabled)")
         
         logger.info("✅ TextBlob initialized (always available)")
     
