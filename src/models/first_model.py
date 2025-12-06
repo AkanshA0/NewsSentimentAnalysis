@@ -127,3 +127,31 @@ def scale_features(
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
     return X_train_scaled, X_test_scaled, scaler
+
+
+def train_model(
+    X_train,
+    y_train,
+    n_estimators: int = 200,
+    max_depth: int | None = None,
+) -> RandomForestRegressor:
+    """
+    Train a RandomForestRegressor on stock features.
+
+    Args:
+        X_train: Training feature matrix.
+        y_train: Training targets.
+        n_estimators: Number of trees.
+        max_depth: Max depth of trees (None = unlimited).
+
+    Returns:
+        Trained RandomForestRegressor model.
+    """
+    model = RandomForestRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        random_state=42,
+        n_jobs=-1,
+    )
+    model.fit(X_train, y_train)
+    return model
