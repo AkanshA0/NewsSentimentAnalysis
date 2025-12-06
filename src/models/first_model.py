@@ -108,3 +108,22 @@ def train_test_split_time_series(
     y_test = y.iloc[-n_test:]
 
     return X_train, X_test, y_train, y_test
+
+
+def scale_features(
+    X_train: pd.DataFrame, X_test: pd.DataFrame
+):
+    """
+    Scale features with StandardScaler (fit on train, apply to test).
+
+    Args:
+        X_train: Training features.
+        X_test: Test features.
+
+    Returns:
+        X_train_scaled, X_test_scaled, fitted scaler
+    """
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    return X_train_scaled, X_test_scaled, scaler
