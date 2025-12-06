@@ -71,10 +71,8 @@ NewsSentiment/
 
 ## Results
 
-| Model | RMSE | MAE | Directional Accuracy |
-|-------|------|-----|---------------------|
-| Random Forest | 26.11 | 16.29 | 91.85% |
-| Linear Regression | 62.32 | 37.37 | 68.24% |
+<img width="1202" height="660" alt="image" src="https://github.com/user-attachments/assets/9bb372cd-a573-4107-9e3b-818b8d9a9078" />
+
 
 ## Methodology
 
