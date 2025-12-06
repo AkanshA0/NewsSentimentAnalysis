@@ -65,11 +65,46 @@ def load_data():
         features_file = FEATURES_DIR / "engineered_features.csv"
         if features_file.exists():
             df = pd.read_csv(features_file, parse_dates=['Date'])
+            
+            # Check if data is fresh (less than 1 day old)
+            last_date = df['Date'].max()
+            # Make both timestamps timezone-naive for comparison
+            now = pd.Timestamp.now().tz_localize(None)
+            last_date = pd.to_datetime(last_date).tz_localize(None)
+            days_old = (now - last_date).days
+            
+            if days_old > 1:
+                st.warning(f"⚠️ Data is {days_old} days old (last update: {last_date.date()})")
+                st.info("💡 For latest predictions, click 'Refresh Data' in sidebar or run: `python test_pipeline.py`")
+            
             return df
         return None
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
         return None
+
+def refresh_data():
+    """Refresh stock data by running data collection."""
+    try:
+        import subprocess
+        st.info("🔄 Fetching latest stock data...")
+        
+        # Run data collection
+        result = subprocess.run(
+            ["python", "test_pipeline.py"],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+        
+        if result.returncode == 0:
+            st.success("✅ Data refreshed successfully!")
+            st.cache_data.clear()  # Clear cache to reload new data
+            st.rerun()
+        else:
+            st.error(f"❌ Data refresh failed: {result.stderr}")
+    except Exception as e:
+        st.error(f"Error refreshing data: {str(e)}")
 
 
 @st.cache_data
@@ -89,18 +124,33 @@ def load_sentiment_timeline():
 def load_model():
     """Load trained model if available."""
     try:
-        model_path = MODELS_DIR / "lstm_model.h5"
-        scaler_path = MODELS_DIR / "scaler.pkl"
+        # Try Random Forest first (no TensorFlow needed)
+        rf_model_path = MODELS_DIR / "random_forest.pkl"
+        scaler_path = MODELS_DIR / "scaler_baseline.pkl"
+        feature_cols_path = MODELS_DIR / "feature_cols.pkl"
         
-        if model_path.exists() and scaler_path.exists():
-            from tensorflow import keras
-            model = keras.models.load_model(model_path)
+        if rf_model_path.exists() and scaler_path.exists() and feature_cols_path.exists():
+            import joblib
+            model = joblib.load(rf_model_path)
             scaler = joblib.load(scaler_path)
+            feature_cols = joblib.load(feature_cols_path)
+            return model, scaler, feature_cols
+        
+        # Fallback to LSTM if Random Forest not found
+        lstm_model_path = MODELS_DIR / "lstm_model.h5"
+        lstm_scaler_path = MODELS_DIR / "scaler.pkl"
+        
+        if lstm_model_path.exists() and lstm_scaler_path.exists():
+            from tensorflow import keras
+            import joblib
+            model = keras.models.load_model(lstm_model_path)
+            scaler = joblib.load(lstm_scaler_path)
             feature_cols = joblib.load(MODELS_DIR / "feature_cols.pkl")
             return model, scaler, feature_cols
+            
         return None, None, None
     except Exception as e:
-        st.error(f"Error loading model: {str(e)}")
+        st.warning(f"Could not load model: {str(e)}")
         return None, None, None
 
 
@@ -118,7 +168,7 @@ def get_realtime_sentiment(symbol):
         
         # Fetch news
         collector = NewsCollector(symbols=[symbol])
-        news_df = collector.collect_all_news(max_articles_per_source=5)
+        news_df = collector.collect_all_news(max_articles_per_source=100)
         
         if len(news_df) > 0:
             engineer = FeatureEngineer(use_finbert=False)  # Use TextBlob for speed
@@ -136,38 +186,60 @@ def get_realtime_sentiment(symbol):
 
 def plot_price_with_prediction(df, symbol, model, scaler, feature_cols):
     """Create price chart with predictions."""
-    symbol_data = df[df['Symbol'] == symbol].copy()
+    symbol_data = df[df['Symbol'] == symbol].copy().sort_values('Date')
     
     fig = go.Figure()
     
-    # Historical prices
+    # Historical prices (BLUE LINE)
     fig.add_trace(go.Scatter(
         x=symbol_data['Date'],
         y=symbol_data['Close'],
         name='Historical Price',
-        line=dict(color='#667eea', width=2)
+        line=dict(color='#1f77b4', width=2)  # Blue
     ))
     
     # Add predictions if model is available
     if model is not None:
         try:
-            # Get last 30 days for prediction
-            recent_data = symbol_data[feature_cols].tail(30).values
-            recent_scaled = scaler.transform(recent_data)
-            recent_seq = recent_scaled.reshape(1, 30, -1)
+            # Check if model is LSTM (needs sequences) or Random Forest (single row)
+            model_type = str(type(model).__name__)
             
-            prediction = model.predict(recent_seq, verbose=0)[0][0]
+            if 'RandomForest' in model_type or 'Linear' in model_type:
+                # Random Forest or Linear Regression - use latest single row
+                recent_data = symbol_data[feature_cols].tail(1).values
+                recent_scaled = scaler.transform(recent_data)
+                prediction = model.predict(recent_scaled)[0]  # No verbose parameter
+            else:
+                # LSTM - use sequence of 30 days
+                recent_data = symbol_data[feature_cols].tail(30).values
+                recent_scaled = scaler.transform(recent_data)
+                recent_seq = recent_scaled.reshape(1, 30, -1)
+                prediction = model.predict(recent_seq, verbose=0)[0][0]  # verbose only for LSTM
             
-            # Add prediction point
+            # Add prediction point (RED STAR)
             last_date = symbol_data['Date'].iloc[-1]
+            next_date = last_date + pd.Timedelta(days=1)
+            
             fig.add_trace(go.Scatter(
-                x=[last_date],
+                x=[next_date],
                 y=[prediction],
                 name='Next Day Prediction',
                 mode='markers',
-                marker=dict(color='#764ba2', size=15, symbol='star')
+                marker=dict(color='red', size=20, symbol='star',
+                           line=dict(color='darkred', width=2))  # Red star
             ))
-        except:
+            
+            # Add dashed line from last price to prediction (RED DASHED)
+            fig.add_trace(go.Scatter(
+                x=[last_date, next_date],
+                y=[symbol_data['Close'].iloc[-1], prediction],
+                name='Prediction Trend',
+                mode='lines',
+                line=dict(color='red', width=2, dash='dash'),
+                showlegend=False
+            ))
+        except Exception as e:
+            st.error(f"Prediction error: {str(e)}")
             pass
     
     fig.update_layout(
@@ -191,11 +263,20 @@ def plot_sentiment_timeline(df, symbol):
     
     fig = go.Figure()
     
-    colors = ['green' if x > 0 else 'red' for x in symbol_data['daily_sentiment']]
+    # Filter out days with 0 sentiment to show only relevant data
+    non_zero_sentiment = symbol_data[symbol_data['daily_sentiment'] != 0]
+    
+    if len(non_zero_sentiment) > 0:
+        plot_data = non_zero_sentiment
+    else:
+        # Fallback if all are zero (shouldn't happen with fresh data)
+        plot_data = symbol_data.tail(30)
+    
+    colors = ['green' if x > 0 else 'red' for x in plot_data['daily_sentiment']]
     
     fig.add_trace(go.Bar(
-        x=symbol_data['Date'],
-        y=symbol_data['daily_sentiment'],
+        x=plot_data['Date'],
+        y=plot_data['daily_sentiment'],
         name='Daily Sentiment',
         marker_color=colors
     ))
@@ -216,12 +297,12 @@ def main():
     """Main application."""
     
     # Header
-    st.markdown('<h1 class="main-header">📈 AI Stock Price Predictor</h1>', 
+    st.markdown('<h1 class="main-header">AI Stock Price Predictor</h1>', 
                 unsafe_allow_html=True)
     
     st.markdown("""
     <p style='text-align: center; font-size: 1.2rem; color: #666;'>
-    Real-time predictions powered by LSTM + News Sentiment Analysis
+    AI-Powered predictions using Random Forest + News Sentiment Analysis
     </p>
     """, unsafe_allow_html=True)
     
@@ -238,6 +319,13 @@ def main():
             STOCK_SYMBOLS,
             help="Select a stock to analyze"
         )
+        
+        st.markdown("---")
+        
+        # Data refresh button
+        st.subheader("🔄 Data Management")
+        if st.button("Refresh Data", help="Fetch latest stock prices and news"):
+            refresh_data()
         
         st.markdown("---")
         
@@ -280,13 +368,25 @@ def main():
         st.warning(f"No data for {selected_stock}")
         return
     
+    stock_data = stock_data.sort_values('Date')  # Ensure sorted by date
+    
     # Prediction Box
     if model_trained:
         try:
-            recent_data = stock_data[feature_cols].tail(30).values
-            recent_scaled = scaler.transform(recent_data)
-            recent_seq = recent_scaled.reshape(1, 30, -1)
-            prediction = model.predict(recent_seq, verbose=0)[0][0]
+            # Check model type
+            model_type = str(type(model).__name__)
+            
+            if 'RandomForest' in model_type or 'Linear' in model_type:
+                # Random Forest - use single row
+                recent_data = stock_data[feature_cols].tail(1).values
+                recent_scaled = scaler.transform(recent_data)
+                prediction = model.predict(recent_scaled)[0]
+            else:
+                # LSTM - use sequence
+                recent_data = stock_data[feature_cols].tail(30).values
+                recent_scaled = scaler.transform(recent_data)
+                recent_seq = recent_scaled.reshape(1, 30, -1)
+                prediction = model.predict(recent_seq, verbose=0)[0][0]
             
             current_price = stock_data['Close'].iloc[-1]
             predicted_change = ((prediction - current_price) / current_price) * 100
@@ -314,25 +414,29 @@ def main():
                        stock_data['Close'].iloc[-2]) * 100 if len(stock_data) > 1 else 0
     
     with col1:
-        st.metric("💰 Last Historical Price", f"${current_price:.2f}", f"{price_change_pct:+.2f}%",
+        st.metric("Last Historical Price", f"${current_price:.2f}", f"{price_change_pct:+.2f}%",
                  help="Last closing price from training dataset")
     
     with col2:
-        avg_sentiment = stock_data['daily_sentiment'].mean() if 'daily_sentiment' in stock_data.columns else 0
+        # Use latest sentiment (most recent date)
+        latest_sentiment = stock_data['daily_sentiment'].iloc[-1] if 'daily_sentiment' in stock_data.columns else 0
+        sentiment_date = stock_data['Date'].iloc[-1].strftime('%Y-%m-%d')
+        
         # Fix -0.000 display issue
-        if abs(avg_sentiment) < 0.001:
-            avg_sentiment = 0.0
-        sentiment_label = "Positive" if avg_sentiment > 0 else ("Negative" if avg_sentiment < 0 else "Neutral")
-        st.metric("📊 Avg Sentiment", f"{avg_sentiment:.3f}", sentiment_label,
-                 help="Average sentiment from historical news data")
+        if abs(latest_sentiment) < 0.001:
+            latest_sentiment = 0.0
+            
+        # Use numeric value for delta to get correct Green/Red arrow colors
+        st.metric("Latest Sentiment", f"{latest_sentiment:.3f}", f"{latest_sentiment:.3f}",
+                 help=f"Sentiment score for {sentiment_date}")
     
     with col3:
-        st.metric("📅 Data Points", f"{len(stock_data)}", "days",
+        st.metric("Data Points", f"{len(stock_data)}", "days",
                  help="Number of trading days in dataset")
     
     with col4:
         news_count = stock_data['news_count'].sum() if 'news_count' in stock_data.columns else 0
-        st.metric("📰 News Analyzed", f"{int(news_count)}", "articles",
+        st.metric("News Analyzed", f"{int(news_count)}", "articles",
                  help="Total news articles in training data")
     
     # Charts
@@ -354,7 +458,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <p style='text-align: center; color: #666;'>
-    🚀 Built with TensorFlow, FinBERT, and Streamlit | Data: yfinance, Google News, Finviz
+    🚀 Built with Random Forest, TextBlob, and Streamlit | Data: yfinance, Google News, Finviz
     </p>
     """, unsafe_allow_html=True)
 

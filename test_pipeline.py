@@ -70,8 +70,8 @@ def test_news_collection():
         # Initialize collector
         collector = NewsCollector(symbols=STOCK_SYMBOLS)
         
-        # Collect news (limit to 10 articles per source for testing)
-        news_df = collector.collect_all_news(max_articles_per_source=10)
+        # Collect news (fetch more articles for better coverage)
+        news_df = collector.collect_all_news(max_articles_per_source=100)
         
         # Print summary
         summary = collector.get_news_summary()
@@ -167,9 +167,9 @@ def test_feature_engineering():
         if news_file.exists():
             news_df = pd.read_csv(news_file, parse_dates=['published_date'])
             
-            # Limit to first 50 articles for testing
-            news_df = news_df.head(50)
-            logger.info(f"Testing with {len(news_df)} news articles")
+            # Process ALL news articles
+            # news_df = news_df.head(50)  <-- REMOVED LIMIT
+            logger.info(f"Processing {len(news_df)} news articles")
             
             # Create all features
             features_df = engineer.create_all_features(stock_df, news_df)

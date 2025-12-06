@@ -1,0 +1,39 @@
+# Docker
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Data files (too large)
+data/
+models/
+*.pkl
+*.h5
+*.csv
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Notebooks
+*.ipynb

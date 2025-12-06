@@ -55,8 +55,8 @@ exclude_cols = [
     'Volume_SMA_20',
 ]
 
-close_lag_cols = [col for col in df.columns if 'Close_lag' in col or 'Close_rolling' in col]
-exclude_cols.extend(close_lag_cols)
+# Close_lag and Close_rolling are PAST prices - they don't cause data leakage!
+# Excluding them was the bug causing terrible predictions.
 
 feature_cols = [col for col in df.columns if col not in exclude_cols]
 

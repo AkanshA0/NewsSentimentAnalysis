@@ -179,13 +179,14 @@ def plot_price_chart(df, symbol, prediction=None):
         last_date = symbol_data['Date'].iloc[-1]
         next_date = last_date + pd.Timedelta(days=1)
         
+        # Only show prediction as RED STAR (not a line)
         fig.add_trace(go.Scatter(
-            x=[last_date, next_date],
-            y=[symbol_data['Close'].iloc[-1], prediction],
-            mode='lines+markers',
-            name='Prediction',
-            line=dict(color='red', width=2, dash='dash'),
-            marker=dict(size=10, symbol='star')
+            x=[next_date],
+            y=[prediction],
+            mode='markers',
+            name='Next Day Prediction',
+            marker=dict(color='red', size=20, symbol='star',
+                       line=dict(color='darkred', width=2))
         ))
     
     fig.update_layout(

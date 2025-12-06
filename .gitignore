@@ -106,6 +106,10 @@ DEMO_GUIDE.md
 PRESENTATION_OUTLINE.md
 FINAL_SUMMARY.md
 VIDEO_GUIDE.md
-PRESENTATION_OUTLINE.md
-PRESENTATION_OUTLINE.md
+
+# MLOps artifacts
+mlruns/
+mlflow.db
+logs/tensorboard/
+feature_importance.csv
 

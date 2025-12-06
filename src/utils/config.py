@@ -26,14 +26,15 @@ for dir_path in [RAW_DATA_DIR, PROCESSED_DATA_DIR, FEATURES_DIR,
 # ============================================================================
 # STOCK CONFIGURATION
 # ============================================================================
-STOCK_SYMBOLS = ["AAPL", "GOOGL", "TSLA", "NVDA"]
+STOCK_SYMBOLS = ["AAPL", "GOOGL", "TSLA", "NVDA", "GME"]
 
 # Stock display names
 STOCK_NAMES = {
     'AAPL': 'Apple Inc',
     'GOOGL': 'Alphabet Inc (Google)',
     'TSLA': 'Tesla Inc',
-    'NVDA': 'NVIDIA Corp'
+    'NVDA': 'NVIDIA Corp',
+    'GME': 'GameStop Corp'  # Highly volatile, lots of news
 }
 
 DATA_PERIOD = "2y"  # 2 years of historical stock data
