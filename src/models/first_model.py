@@ -79,3 +79,32 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     data = data.dropna()
 
     return data
+
+
+def train_test_split_time_series(
+    data: pd.DataFrame,
+    test_size: float = 0.2,
+):
+    """
+    Split time series data into train and test sets without shuffling.
+
+    Args:
+        data: DataFrame with features and "target" column.
+        test_size: Fraction of samples to be used for testing (0 < test_size < 1).
+
+    Returns:
+        X_train, X_test, y_train, y_test
+    """
+    # Separate features and target
+    X = data.drop(columns=["target"])
+    y = data["target"]
+
+    n_samples = len(data)
+    n_test = int(n_samples * test_size)
+
+    X_train = X.iloc[:-n_test]
+    X_test = X.iloc[-n_test:]
+    y_train = y.iloc[:-n_test]
+    y_test = y.iloc[-n_test:]
+
+    return X_train, X_test, y_train, y_test
