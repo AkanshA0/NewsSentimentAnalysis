@@ -74,6 +74,20 @@ NewsSentiment/
 <img width="1202" height="660" alt="image" src="https://github.com/user-attachments/assets/9bb372cd-a573-4107-9e3b-818b8d9a9078" />
 
 
+## MLOps & Experiment Tracking
+
+We built a proper MLOps pipeline to track everything. Using **MLflow**, we log every experiment to never lose track of a "winning" model configuration.
+
+**What it does:**
+*   **Tracks Experiments:** Logs every training run with its parameters (like tree depth) and metrics (accuracy, RMSE).
+*   **Compares Models:** Lets us visually compare different models side-by-side to pick the absolute best one.
+*   **Version Control:** Saves the model files automatically, so we can always roll back to a previous version.
+
+**To see it in action:**
+1. Run `python train_with_mlflow.py`
+2. Run `mlflow ui`
+3. Open `http://localhost:5000` to see our experiment dashboard!
+
 ## Methodology
 
 Follows CRISP-DM framework:
