@@ -100,22 +100,6 @@ Follows CRISP-DM framework:
 
 See `CRISP_DM_METHODOLOGY.md` for details.
 
-## Data Leakage Prevention
-
-Critical: Only use PAST data for predictions!
-
-**Excluded features:**
-- Same-day OHLCV (not known until market closes)
-- Same-day technical indicators
-- Same-day news sentiment
-- Target variable lags
-
-**Used features:**
-- Past returns (1-14 days ago)
-- Lagged sentiment
-- Volume patterns
-- Rolling statistics
-
 ## Challenges
 
 1. **Limited News Data:** Only collected 71 articles due to API limitations
