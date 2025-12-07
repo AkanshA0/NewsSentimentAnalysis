@@ -149,7 +149,7 @@ class StockDataCollector:
             df['OBV'] = (np.sign(df['Close'].diff()) * df['Volume']).fillna(0).cumsum()
             
             # Stochastic Oscillator
-            df['EMA_50'] = ta.ema(df['Close'], length=50)
+            # df['EMA_50'] = ta.ema(df['Close'], length=50)  # Removed: Redundant and 'ta' not imported
             
             # Price momentum features
             df['Price_Change_1d'] = df['Close'].diff(1)

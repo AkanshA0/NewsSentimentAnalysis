@@ -18,6 +18,14 @@ from src.utils.config import STOCK_SYMBOLS, FEATURES_DIR, MODELS_DIR
 from src.data_collection.news_collector import NewsCollector
 from src.preprocessing.feature_engineer import FeatureEngineer
 
+# Optional Deep Learning (for LSTM)
+try:
+    import tensorflow as tf
+    from tensorflow.keras.models import load_model
+    HAS_TENSORFLOW = True
+except ImportError:
+    HAS_TENSORFLOW = False
+
 # Page configuration
 st.set_page_config(
     page_title="Stock Price Prediction",
@@ -136,17 +144,21 @@ def load_model():
             feature_cols = joblib.load(feature_cols_path)
             return model, scaler, feature_cols
         
-        # Fallback to LSTM if Random Forest not found
-        lstm_model_path = MODELS_DIR / "lstm_model.h5"
-        lstm_scaler_path = MODELS_DIR / "scaler.pkl"
-        
-        if lstm_model_path.exists() and lstm_scaler_path.exists():
-            from tensorflow import keras
-            import joblib
-            model = keras.models.load_model(lstm_model_path)
-            scaler = joblib.load(lstm_scaler_path)
-            feature_cols = joblib.load(MODELS_DIR / "feature_cols.pkl")
-            return model, scaler, feature_cols
+        # Fallback to LSTM if Random Forest not found and TensorFlow is available
+        if HAS_TENSORFLOW:
+            try:
+                lstm_model_path = MODELS_DIR / "lstm_model.keras"
+                lstm_scaler_path = MODELS_DIR / "scaler.pkl"
+                
+                if lstm_model_path.exists() and lstm_scaler_path.exists():
+                    from tensorflow import keras
+                    import joblib
+                    model = keras.models.load_model(lstm_model_path)
+                    scaler = joblib.load(lstm_scaler_path)
+                    feature_cols = joblib.load(MODELS_DIR / "feature_cols.pkl")
+                    return model, scaler, feature_cols
+            except Exception as e:
+                st.warning(f"Could not load LSTM: {str(e)}")
             
         return None, None, None
     except Exception as e:
