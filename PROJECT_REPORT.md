@@ -18,7 +18,7 @@ The financial market is influenced by a myriad of factors, ranging from macroeco
 
 **Results Overview:** We developed an end-to-end pipeline that fetches real-time data, processes it into 60+ engineered features, and feeds it into a robust ensemble model. Our system not only predicts prices but also provides a "Bullish" or "Bearish" signal with high confidence, validated through extensive backtesting.
 
-![Ensemble Predictions](../visualizations/ensemble_predictions.png)
+![Ensemble Predictions](visualizations/ensemble_predictions.png)
 *Figure 1: Ensemble Model Predictions vs Actual Stock Prices*
 
 ---
@@ -94,7 +94,7 @@ To ensure reproducibility and track our experiments systematically, we implement
 *   **Model Versioning:** The best-performing models were automatically saved with version tags, ensuring we always deployed the correct model to production.
 *   **Pipeline Automation:** The entire flow from data ingestion to model training is scriptable, reducing manual errors.
 
-![MLOps Pipeline Execution Log](../visualizations/mlops_pipeline_screenshot.png)
+![MLOps Pipeline Execution Log](visualizations/mlops_pipeline_screenshot.png)
 *Figure 1b: MLOps Pipeline enabling MLflow Tracking*
 
 ---
@@ -112,19 +112,19 @@ We conducted a comprehensive comparison of multiple models to evaluate the impac
 | Ensemble | 60.88 | 42.38 | 0.2819 | 24.01% | 75.35% | 1.97 |
 | Linear Regression | 62.32 | 37.37 | 0.3137 | 17.93% | 68.24% | 2.70 |
 
-![Model Training Output Screenshot](../visualizations/model_training_screenshot.png)
+![Model Training Output Screenshot](visualizations/model_training_screenshot.png)
 *Figure 2a: Raw Output from Model Training (Screenshot)*
 
 ### 5.2. Metric Visualizations
 To better visualize the performance difference, we plotted key metrics across all models.
 
-![Model Comparison - RMSE (Lower is Better)](../visualizations/model_comparison_rmse.png)
+![Model Comparison - RMSE (Lower is Better)](visualizations/model_comparison_rmse.png)
 *Figure 2b: RMSE Comparison - Random Forest has the lowest error.*
 
-![Model Comparison - MAE (Lower is Better)](../visualizations/model_comparison_mae.png)
+![Model Comparison - MAE (Lower is Better)](visualizations/model_comparison_mae.png)
 *Figure 2c: MAE Comparison - Random Forest consistently outperforms LSTMs.*
 
-![Model Comparison - Directional Accuracy](../visualizations/model_comparison_dir_acc_pct.png)
+![Model Comparison - Directional Accuracy](visualizations/model_comparison_dir_acc_pct.png)
 *Figure 2: Directional Accuracy Comparison across Models*
 
 *Observations:*
@@ -145,19 +145,19 @@ We utilized several visualization techniques to interpret the model:
 *   **Prediction vs Actual Plot:** Demonstrated tight tracking of the stock price, with slight deviations during extreme volatility events.
 *   **Sentiment Timeline:** A bar chart correlating large price drops with negative sentiment spikes (red bars).
 
-![Ensemble Scatter Plot](../visualizations/ensemble_scatter.png)
+![Ensemble Scatter Plot](visualizations/ensemble_scatter.png)
 *Figure 3: Predicted vs Actual Scatter Plot (Ensemble)*
 
 ### 5.4. Failure Analysis
 The model occasionally lags by one day during "black swan" events where news breaks *after* market close but affects the *next open* distinctively from the *historical close*. Real-time pre-market adjustment remains a challenge.
 
-![Ensemble Residuals](../visualizations/ensemble_residuals.png)
+![Ensemble Residuals](visualizations/ensemble_residuals.png)
 *Figure 4: Residual Analysis showing error distribution*
 
 ### 5.5. Confusion Matrix (Directional Accuracy)
 The confusion matrix below highlights the model's ability to correctly classify "Up" and "Down" movements, which is the key metric for our directional accuracy score of 91.85%.
 
-![Confusion Matrix](../visualizations/ensemble_confusion_matrix.png)
+![Confusion Matrix](visualizations/ensemble_confusion_matrix.png)
 *Figure 5: Confusion Matrix for Directional Prediction*
 
 ---
