@@ -185,3 +185,36 @@ def evaluate_model(model, X_test, y_test, feature_names: list[str]):
 
     print("\n=== Feature Importances ===")
     print(importance_df.to_string(index=False))
+
+
+def main():
+    # ---- Config ----
+    ticker = "AAPL"
+    period = "2y"
+    test_size = 0.2
+
+    # ---- Pipeline ----
+    df_raw = download_stock_data(ticker, period=period)
+    data = add_features(df_raw)
+
+    print(f"Total samples after feature engineering: {len(data)}")
+
+    X_train, X_test, y_train, y_test = train_test_split_time_series(
+        data, test_size=test_size
+    )
+
+    print(f"Train samples: {len(X_train)}, Test samples: {len(X_test)}")
+
+    X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
+
+    feature_names = list(X_train.columns)
+
+    model = train_model(X_train_scaled, y_train)
+
+    evaluate_model(model, X_test_scaled, y_test, feature_names)
+
+    print("\nDone.")
+
+
+if __name__ == "__main__":
+    main()
