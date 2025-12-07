@@ -155,3 +155,33 @@ def train_model(
     )
     model.fit(X_train, y_train)
     return model
+
+
+def evaluate_model(model, X_test, y_test, feature_names: list[str]):
+    """
+    Evaluate the model and print metrics and feature importances.
+
+    Args:
+        model: Trained model.
+        X_test: Test features.
+        y_test: Test targets.
+        feature_names: Names of features used in training.
+    """
+    y_pred = model.predict(X_test)
+
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = np.sqrt(mse)
+    r2 = r2_score(y_test, y_pred)
+
+    print("\n=== Evaluation on Test Set ===")
+    print(f"RMSE: {rmse:.6f}")
+    print(f"R^2 : {r2:.4f}")
+
+    # Feature importances
+    importances = model.feature_importances_
+    importance_df = pd.DataFrame(
+        {"feature": feature_names, "importance": importances}
+    ).sort_values("importance", ascending=False)
+
+    print("\n=== Feature Importances ===")
+    print(importance_df.to_string(index=False))
