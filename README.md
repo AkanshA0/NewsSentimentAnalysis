@@ -28,6 +28,10 @@ This system predicts stock prices for AAPL, GOOGL, TSLA, and NVDA by combining:
 
 **Best Result:** 91.85% directional accuracy with Random Forest
 
+## System Architecture
+
+<img width="2188" height="3524" alt="sysarch" src="https://github.com/user-attachments/assets/23d0a084-ab5e-42f7-8610-60e66a826a1a" />
+
 ## Features
 
 - 60+ engineered features
